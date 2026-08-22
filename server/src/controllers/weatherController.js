@@ -1,185 +1,381 @@
-const User = require("../models/User");
 const https = require("https");
 
-// Helper to perform HTTPS GET requests returning parsed JSON (compatible with all Node.js versions)
-function httpsGet(url, options = {}) {
-  const mergedOptions = {
-    ...options,
-    headers: {
-      "Accept-Encoding": "identity",
-      "User-Agent": "SocietyCare/1.0 (contact@societycare.com)",
-      ...(options.headers || {})
-    }
-  };
-  return new Promise((resolve, reject) => {
-    https.get(url, mergedOptions, (res) => {
-      let data = "";
-      res.on("data", (chunk) => {
-        data += chunk;
-      });
-      res.on("end", () => {
-        if (res.statusCode >= 200 && res.statusCode < 300) {
-          try {
-            resolve(JSON.parse(data));
-          } catch (e) {
-            reject(new Error(`Failed to parse JSON response: ${e.message}`));
-          }
-        } else {
-          reject(new Error(`Request failed with status ${res.statusCode}`));
-        }
-      });
-    }).on("error", (err) => {
-      reject(err);
+// -----------------------------
+// Generic JSON GET helper
+// -----------------------------
+async function fetchJson(url, options = {}) {
+  const controller = new AbortController();
+
+  const timeout = setTimeout(() => {
+    controller.abort();
+  }, 15000);
+
+  try {
+    const response = await fetch(url, {
+      ...options,
+      signal: controller.signal,
+      headers: {
+        Accept: "application/json",
+        "User-Agent": "SocietyCare/1.0",
+        ...(options.headers || {}),
+      },
+      cache: "no-store",
     });
-  });
+
+    const text = await response.text();
+
+    if (!response.ok) {
+      throw new Error(
+        `External API returned ${response.status}: ${text.slice(0, 300)}`
+      );
+    }
+
+    try {
+      return JSON.parse(text);
+    } catch {
+      throw new Error("External API returned invalid JSON.");
+    }
+  } finally {
+    clearTimeout(timeout);
+  }
 }
 
-// Helper to map WMO code to human-readable weather conditions and emojis
+// -----------------------------
+// Weather code mapping
+// -----------------------------
 function parseWeatherCode(code) {
-  if (code === 0) return { condition: "Sunny", icon: "☀️" };
-  if ([1, 2, 3].includes(code)) return { condition: "Partly Cloudy", icon: "🌤️" };
-  if ([45, 48].includes(code)) return { condition: "Foggy", icon: "☁️" };
-  if ([51, 53, 55, 56, 57, 61, 63, 65, 66, 67, 80, 81, 82].includes(code)) return { condition: "Rain", icon: "🌧️" };
-  if ([71, 73, 75, 77, 85, 86].includes(code)) return { condition: "Snowy", icon: "❄️" };
-  if ([95, 96, 99].includes(code)) return { condition: "Thunderstorm", icon: "⛈️" };
-  return { condition: "Cloudy", icon: "☁️" };
+  if (code === 0) {
+    return {
+      condition: "Sunny",
+      icon: "☀️",
+    };
+  }
+
+  if ([1, 2, 3].includes(code)) {
+    return {
+      condition: "Partly Cloudy",
+      icon: "🌤️",
+    };
+  }
+
+  if ([45, 48].includes(code)) {
+    return {
+      condition: "Foggy",
+      icon: "☁️",
+    };
+  }
+
+  if (
+    [51, 53, 55, 56, 57, 61, 63, 65, 66, 67, 80, 81, 82].includes(code)
+  ) {
+    return {
+      condition: "Rain",
+      icon: "🌧️",
+    };
+  }
+
+  if ([71, 73, 75, 77, 85, 86].includes(code)) {
+    return {
+      condition: "Snowy",
+      icon: "❄️",
+    };
+  }
+
+  if ([95, 96, 99].includes(code)) {
+    return {
+      condition: "Thunderstorm",
+      icon: "⛈️",
+    };
+  }
+
+  return {
+    condition: "Cloudy",
+    icon: "☁️",
+  };
 }
 
-/**
- * Get weather data for given coordinates
- * GET /api/weather?lat=...&lon=...
- */
-async function getWeather(req, res, next) {
+// -----------------------------
+// GET /api/weather
+// -----------------------------
+async function getWeather(req, res) {
   try {
     const { lat, lon, locationName } = req.query;
 
-    if (!lat || !lon) {
-      return res.status(400).json({ success: false, message: "Latitude and longitude are required." });
+    const latitude = Number(lat);
+    const longitude = Number(lon);
+
+    if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+      return res.status(400).json({
+        success: false,
+        message: "Valid latitude and longitude are required.",
+      });
     }
 
-    // 1. Fetch current and daily forecast from Open-Meteo
-    const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m&hourly=temperature_2m,precipitation_probability,weather_code&daily=weather_code,temperature_2m_max,temperature_2m_min&timezone=auto&forecast_days=1`;
+    if (latitude < -90 || latitude > 90) {
+      return res.status(400).json({
+        success: false,
+        message: "Latitude must be between -90 and 90.",
+      });
+    }
 
-    const weatherData = await httpsGet(weatherUrl);
+    if (longitude < -180 || longitude > 180) {
+      return res.status(400).json({
+        success: false,
+        message: "Longitude must be between -180 and 180.",
+      });
+    }
 
-    // 2. Resolve readable location name
-    let resolvedLocation = locationName || "";
+    // Build URL safely instead of manually concatenating query strings.
+    const weatherUrl = new URL(
+      "https://api.open-meteo.com/v1/forecast"
+    );
+
+    weatherUrl.searchParams.set("latitude", latitude);
+    weatherUrl.searchParams.set("longitude", longitude);
+
+    weatherUrl.searchParams.set(
+      "current",
+      "temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m"
+    );
+
+    weatherUrl.searchParams.set(
+      "hourly",
+      "temperature_2m,precipitation_probability,weather_code"
+    );
+
+    weatherUrl.searchParams.set(
+      "daily",
+      "weather_code,temperature_2m_max,temperature_2m_min"
+    );
+
+    weatherUrl.searchParams.set("timezone", "auto");
+    weatherUrl.searchParams.set("forecast_days", "1");
+
+    console.log("Fetching weather:", weatherUrl.toString());
+
+    const weatherData = await fetchJson(weatherUrl.toString());
+
+    // ----------------------------------
+    // Resolve location name
+    // ----------------------------------
+    let resolvedLocation = locationName?.trim() || "";
+
+    // Only reverse-geocode when frontend didn't provide a name.
     if (!resolvedLocation) {
       try {
-        const reverseGeocodeUrl = `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&accept-language=en`;
-        const geoData = await httpsGet(reverseGeocodeUrl, {
-          headers: { "User-Agent": "SocietyCare/1.0 (contact@societycare.com)" }
+        const reverseUrl = new URL(
+          "https://nominatim.openstreetmap.org/reverse"
+        );
+
+        reverseUrl.searchParams.set("lat", latitude);
+        reverseUrl.searchParams.set("lon", longitude);
+        reverseUrl.searchParams.set("format", "json");
+        reverseUrl.searchParams.set("accept-language", "en");
+
+        const geoData = await fetchJson(reverseUrl.toString(), {
+          headers: {
+            "User-Agent":
+              "SocietyCare/1.0 (contact@societycare.com)",
+          },
         });
-        if (geoData && geoData.address) {
-          // Extract city/town/village/suburb or address display name
-          resolvedLocation = geoData.address.city || 
-                             geoData.address.town || 
-                             geoData.address.village || 
-                             geoData.address.suburb || 
-                             geoData.address.state || 
-                             geoData.display_name.split(",")[0];
+
+        if (geoData?.address) {
+          resolvedLocation =
+            geoData.address.city ||
+            geoData.address.town ||
+            geoData.address.village ||
+            geoData.address.suburb ||
+            geoData.address.state ||
+            "";
         }
-      } catch (geoErr) {
-        console.error("Reverse geocoding failed:", geoErr.message);
+
+        if (!resolvedLocation && geoData?.display_name) {
+          resolvedLocation = geoData.display_name.split(",")[0];
+        }
+      } catch (geoError) {
+        console.error(
+          "Reverse geocoding failed:",
+          geoError.message
+        );
       }
     }
 
     if (!resolvedLocation) {
-      resolvedLocation = `${Number(lat).toFixed(4)}°, ${Number(lon).toFixed(4)}°`;
+      resolvedLocation = `${latitude.toFixed(4)}°, ${longitude.toFixed(4)}°`;
     }
 
-    // 3. Format hourly forecast trend (12 AM, 7 AM, 1 PM, 7 PM)
+    // ----------------------------------
+    // Hourly forecast
+    // ----------------------------------
     const hourly = weatherData.hourly || {};
-    const forecastTimes = [0, 7, 13, 19]; // index maps to hour of day (12 AM, 7 AM, 1 PM, 7 PM)
-    const forecast = forecastTimes.map(hour => {
-      const timeLabel = hour === 0 ? "12 AM" : hour === 12 ? "12 PM" : hour > 12 ? `${hour - 12} PM` : `${hour} AM`;
-      const temp = Math.round(hourly.temperature_2m?.[hour] ?? 0);
+
+    const forecastTimes = [0, 7, 13, 19];
+
+    const forecast = forecastTimes.map((hour) => {
+      const timeLabel =
+        hour === 0
+          ? "12 AM"
+          : hour === 12
+            ? "12 PM"
+            : hour > 12
+              ? `${hour - 12} PM`
+              : `${hour} AM`;
+
+      const temp = Math.round(
+        hourly.temperature_2m?.[hour] ?? 0
+      );
+
       const code = hourly.weather_code?.[hour] ?? 0;
+
       const parsed = parseWeatherCode(code);
-      const rainProbability = Math.round(hourly.precipitation_probability?.[hour] ?? 0);
+
+      const rainProbability = Math.round(
+        hourly.precipitation_probability?.[hour] ?? 0
+      );
 
       return {
         time: timeLabel,
         temp,
         condition: parsed.condition,
         icon: parsed.icon,
-        rainProbability
+        rainProbability,
       };
     });
 
-    // 4. Extract current status
+    // ----------------------------------
+    // Current weather
+    // ----------------------------------
     const current = weatherData.current || {};
-    const parsedCurrent = parseWeatherCode(current.weather_code ?? 0);
+
+    const parsedCurrent = parseWeatherCode(
+      current.weather_code ?? 0
+    );
+
     const daily = weatherData.daily || {};
 
-    const high = Math.round(daily.temperature_2m_max?.[0] ?? (current.temperature_2m + 3));
-    const low = Math.round(daily.temperature_2m_min?.[0] ?? (current.temperature_2m - 4));
-    
-    // Rain probability from hourly peak or first hour peak
-    const rainProbability = Math.round(Math.max(...(hourly.precipitation_probability?.slice(0, 24) || [0])));
+    const high = Math.round(
+      daily.temperature_2m_max?.[0] ??
+        ((current.temperature_2m ?? 0) + 3)
+    );
+
+    const low = Math.round(
+      daily.temperature_2m_min?.[0] ??
+        ((current.temperature_2m ?? 0) - 4)
+    );
+
+    const precipitationValues =
+      hourly.precipitation_probability?.slice(0, 24) || [0];
+
+    const rainProbability = Math.round(
+      Math.max(...precipitationValues)
+    );
 
     const normalizedData = {
       location: resolvedLocation,
-      temperature: Math.round(current.temperature_2m ?? 0),
+
+      temperature: Math.round(
+        current.temperature_2m ?? 0
+      ),
+
       condition: parsedCurrent.condition,
+
       icon: parsedCurrent.icon,
+
       high,
+
       low,
+
       rainProbability,
-      humidity: Math.round(current.relative_humidity_2m ?? 0),
-      windSpeed: Math.round(current.wind_speed_10m ?? 0),
-      forecast
+
+      humidity: Math.round(
+        current.relative_humidity_2m ?? 0
+      ),
+
+      windSpeed: Math.round(
+        current.wind_speed_10m ?? 0
+      ),
+
+      forecast,
     };
 
     return res.status(200).json({
       success: true,
-      data: normalizedData
+      data: normalizedData,
     });
   } catch (error) {
-    console.error("Weather Controller error:", error);
-    return res.status(500).json({ success: false, message: `Weather information unavailable: ${error.message}` });
+    console.error("Weather Controller error:", {
+      message: error.message,
+      stack: error.stack,
+    });
+
+    return res.status(500).json({
+      success: false,
+      message: "Weather information unavailable",
+    });
   }
 }
 
-/**
- * Search locations by name
- * GET /api/weather/search?q=...
- */
-async function searchLocations(req, res, next) {
+// -----------------------------
+// GET /api/weather/search?q=...
+// -----------------------------
+async function searchLocations(req, res) {
   try {
-    const { q } = req.query;
+    const q = String(req.query.q || "").trim();
 
-    if (!q || q.trim().length < 2) {
-      return res.status(200).json({ success: true, data: [] });
+    if (q.length < 2) {
+      return res.status(200).json({
+        success: true,
+        data: [],
+      });
     }
 
-    const searchUrl = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(q)}&count=5&language=en`;
-    const searchData = await httpsGet(searchUrl);
-    const results = (searchData.results || []).map(item => {
-      const parts = [
-        item.name,
-        item.admin1, // State/Province
-        item.country
-      ].filter(Boolean);
+    const searchUrl = new URL(
+      "https://geocoding-api.open-meteo.com/v1/search"
+    );
 
-      return {
-        name: parts.join(", "),
-        latitude: item.latitude,
-        longitude: item.longitude
-      };
-    });
+    searchUrl.searchParams.set("name", q);
+    searchUrl.searchParams.set("count", "5");
+    searchUrl.searchParams.set("language", "en");
+    searchUrl.searchParams.set("format", "json");
+
+    const searchData = await fetchJson(
+      searchUrl.toString()
+    );
+
+    const results = (searchData.results || []).map(
+      (item) => {
+        const parts = [
+          item.name,
+          item.admin1,
+          item.country,
+        ].filter(Boolean);
+
+        return {
+          name: parts.join(", "),
+          latitude: item.latitude,
+          longitude: item.longitude,
+        };
+      }
+    );
 
     return res.status(200).json({
       success: true,
-      data: results
+      data: results,
     });
   } catch (error) {
-    console.error("Search locations error:", error);
-    return res.status(500).json({ success: false, message: `Unable to search locations: ${error.message}` });
+    console.error(
+      "Search locations error:",
+      error.message
+    );
+
+    return res.status(500).json({
+      success: false,
+      message: "Unable to search locations",
+    });
   }
 }
 
 module.exports = {
   getWeather,
-  searchLocations
+  searchLocations,
 };
