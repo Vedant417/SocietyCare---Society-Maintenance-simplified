@@ -3,8 +3,16 @@ const https = require("https");
 
 // Helper to perform HTTPS GET requests returning parsed JSON (compatible with all Node.js versions)
 function httpsGet(url, options = {}) {
+  const mergedOptions = {
+    ...options,
+    headers: {
+      "Accept-Encoding": "identity",
+      "User-Agent": "SocietyCare/1.0 (contact@societycare.com)",
+      ...(options.headers || {})
+    }
+  };
   return new Promise((resolve, reject) => {
-    https.get(url, options, (res) => {
+    https.get(url, mergedOptions, (res) => {
       let data = "";
       res.on("data", (chunk) => {
         data += chunk;
@@ -14,7 +22,7 @@ function httpsGet(url, options = {}) {
           try {
             resolve(JSON.parse(data));
           } catch (e) {
-            reject(new Error("Failed to parse JSON response"));
+            reject(new Error(`Failed to parse JSON response: ${e.message}`));
           }
         } else {
           reject(new Error(`Request failed with status ${res.statusCode}`));
@@ -129,7 +137,7 @@ async function getWeather(req, res, next) {
     });
   } catch (error) {
     console.error("Weather Controller error:", error);
-    return res.status(500).json({ success: false, message: "Weather information unavailable" });
+    return res.status(500).json({ success: false, message: `Weather information unavailable: ${error.message}` });
   }
 }
 
@@ -167,7 +175,7 @@ async function searchLocations(req, res, next) {
     });
   } catch (error) {
     console.error("Search locations error:", error);
-    return res.status(500).json({ success: false, message: "Unable to search locations" });
+    return res.status(500).json({ success: false, message: `Unable to search locations: ${error.message}` });
   }
 }
 
