@@ -1,4 +1,30 @@
 const User = require("../models/User");
+const https = require("https");
+
+// Helper to perform HTTPS GET requests returning parsed JSON (compatible with all Node.js versions)
+function httpsGet(url, options = {}) {
+  return new Promise((resolve, reject) => {
+    https.get(url, options, (res) => {
+      let data = "";
+      res.on("data", (chunk) => {
+        data += chunk;
+      });
+      res.on("end", () => {
+        if (res.statusCode >= 200 && res.statusCode < 300) {
+          try {
+            resolve(JSON.parse(data));
+          } catch (e) {
+            reject(new Error("Failed to parse JSON response"));
+          }
+        } else {
+          reject(new Error(`Request failed with status ${res.statusCode}`));
+        }
+      });
+    }).on("error", (err) => {
+      reject(err);
+    });
+  });
+}
 
 // Helper to map WMO code to human-readable weather conditions and emojis
 function parseWeatherCode(code) {
@@ -26,22 +52,17 @@ async function getWeather(req, res, next) {
     // 1. Fetch current and daily forecast from Open-Meteo
     const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m&hourly=temperature_2m,precipitation_probability,weather_code&daily=weather_code,temperature_2m_max,temperature_2m_min&timezone=auto&forecast_days=1`;
 
-    const weatherRes = await fetch(weatherUrl);
-    if (!weatherRes.ok) {
-      throw new Error(`Open-Meteo responded with status ${weatherRes.status}`);
-    }
-    const weatherData = await weatherRes.json();
+    const weatherData = await httpsGet(weatherUrl);
 
     // 2. Resolve readable location name
     let resolvedLocation = locationName || "";
     if (!resolvedLocation) {
       try {
         const reverseGeocodeUrl = `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&accept-language=en`;
-        const geoRes = await fetch(reverseGeocodeUrl, {
+        const geoData = await httpsGet(reverseGeocodeUrl, {
           headers: { "User-Agent": "SocietyCare/1.0 (contact@societycare.com)" }
         });
-        if (geoRes.ok) {
-          const geoData = await geoRes.json();
+        if (geoData && geoData.address) {
           // Extract city/town/village/suburb or address display name
           resolvedLocation = geoData.address.city || 
                              geoData.address.town || 
@@ -125,12 +146,7 @@ async function searchLocations(req, res, next) {
     }
 
     const searchUrl = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(q)}&count=5&language=en`;
-    const searchRes = await fetch(searchUrl);
-    if (!searchRes.ok) {
-      throw new Error(`Geocoding search failed with status ${searchRes.status}`);
-    }
-
-    const searchData = await searchRes.json();
+    const searchData = await httpsGet(searchUrl);
     const results = (searchData.results || []).map(item => {
       const parts = [
         item.name,
