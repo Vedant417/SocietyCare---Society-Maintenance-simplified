@@ -3,41 +3,75 @@ const https = require("https");
 // -----------------------------
 // Generic JSON GET helper
 // -----------------------------
-async function fetchJson(url, options = {}) {
-  const controller = new AbortController();
+function fetchJson(url, options = {}) {
+  return new Promise((resolve, reject) => {
+    const requestUrl = new URL(url);
 
-  const timeout = setTimeout(() => {
-    controller.abort();
-  }, 15000);
+    const req = https.request(
+      {
+        protocol: requestUrl.protocol,
+        hostname: requestUrl.hostname,
+        port: requestUrl.port || 443,
+        path: `${requestUrl.pathname}${requestUrl.search}`,
 
-  try {
-    const response = await fetch(url, {
-      ...options,
-      signal: controller.signal,
-      headers: {
-        Accept: "application/json",
-        "User-Agent": "SocietyCare/1.0",
-        ...(options.headers || {}),
+        method: "GET",
+
+        // Force IPv4 for Render outbound requests.
+        family: 4,
+
+        timeout: 15000,
+
+        headers: {
+          Accept: "application/json",
+          "User-Agent": "SocietyCare/1.0",
+          ...(options.headers || {}),
+        },
       },
-      cache: "no-store",
+      (res) => {
+        let body = "";
+
+        res.setEncoding("utf8");
+
+        res.on("data", (chunk) => {
+          body += chunk;
+        });
+
+        res.on("end", () => {
+          const statusCode = res.statusCode || 500;
+
+          if (statusCode < 200 || statusCode >= 300) {
+            return reject(
+              new Error(
+                `External API returned ${statusCode}: ${body.slice(0, 500)}`
+              )
+            );
+          }
+
+          try {
+            resolve(JSON.parse(body));
+          } catch (error) {
+            reject(
+              new Error(
+                `Invalid JSON from external API: ${error.message}`
+              )
+            );
+          }
+        });
+      }
+    );
+
+    req.on("timeout", () => {
+      req.destroy(
+        new Error("External weather request timed out.")
+      );
     });
 
-    const text = await response.text();
+    req.on("error", (error) => {
+      reject(error);
+    });
 
-    if (!response.ok) {
-      throw new Error(
-        `External API returned ${response.status}: ${text.slice(0, 300)}`
-      );
-    }
-
-    try {
-      return JSON.parse(text);
-    } catch {
-      throw new Error("External API returned invalid JSON.");
-    }
-  } finally {
-    clearTimeout(timeout);
-  }
+    req.end();
+  });
 }
 
 // -----------------------------
