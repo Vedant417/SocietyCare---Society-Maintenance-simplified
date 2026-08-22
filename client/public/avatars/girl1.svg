@@ -1,0 +1,19 @@
+<svg width="100" height="100" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <circle cx="50" cy="50" r="48" fill="#FFF0E8" stroke="#182230" stroke-width="2"/>
+  <!-- Hair back -->
+  <path d="M25,50 C20,70 80,70 75,50" fill="#7C6FF2" stroke="#182230" stroke-width="2"/>
+  <!-- Neck -->
+  <rect x="45" y="65" width="10" height="15" fill="#FFE2D1" stroke="#182230" stroke-width="2"/>
+  <!-- Shirt -->
+  <path d="M30,80 L70,80 Q50,70 30,80" fill="#EF5B5B" stroke="#182230" stroke-width="2"/>
+  <!-- Head -->
+  <circle cx="50" cy="48" r="22" fill="#FFE2D1" stroke="#182230" stroke-width="2"/>
+  <!-- Hair front (Blue) -->
+  <path d="M28,45 C28,25 72,25 72,45 C65,30 35,30 28,45 Z" fill="#7C6FF2" stroke="#182230" stroke-width="2"/>
+  <!-- Sunglasses -->
+  <path d="M34,44 L46,44 L48,49 L36,49 Z" fill="#182230" stroke="#182230" stroke-width="2"/>
+  <path d="M54,44 L66,44 L64,49 L52,49 Z" fill="#182230" stroke="#182230" stroke-width="2"/>
+  <line x1="46" y1="45" x2="54" y2="45" stroke="#182230" stroke-width="2"/>
+  <!-- Smile -->
+  <path d="M46,58 Q50,62 54,58" fill="none" stroke="#182230" stroke-width="2" stroke-linecap="round"/>
+</svg>
