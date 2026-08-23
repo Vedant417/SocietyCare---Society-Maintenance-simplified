@@ -2,7 +2,24 @@
 
 > **Society maintenance, without the chaos.**
 
-**SocietyCare** is a full-stack residential society management platform built to simplify maintenance complaint tracking, resident communication, society operations, and administrative monitoring.
+## 🌐 Deployed Application
+
+**SocietyCare has been deployed as a full-stack application, ```with the backend hosted on Render ```and the ```React/Vite frontend hosted on Vercel.```**
+
+## SocietyCare Deployed Link: https://society-care-society-maintenance-si.vercel.app/login
+
+### 🔑 Development Demo Credentials
+```text
+Secretary: admin@societycare.com / Admin@123
+```
+```text
+Resident: vedantvyas@gmail.com / Vedant123
+```
+```text
+Resident 2: anujtalwar@gmail.com / Anuj123
+```
+
+**```SocietyCare```** is a full-stack residential society management platform built to simplify maintenance complaint tracking, resident communication, society operations, and administrative monitoring.
 
 Residents can raise and track maintenance complaints with photos, view complaint history, receive notifications, check society service status, access emergency contacts, and stay updated through the notice board. Supervisors can manage complaints, priorities, overdue issues, residents, notices, notifications, weather information, and the real-time **Society Pulse** from a centralized dashboard.
 
