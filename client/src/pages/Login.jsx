@@ -165,8 +165,8 @@ const Login = () => {
         {/* Seed Credentials Guide */}
         <div className="bg-brand-ivory border border-brand-gray/50 rounded-2xl p-4 text-xs text-gray-500 space-y-1">
           <p className="font-bold text-brand-charcoal mb-1">Development Demo Credentials:</p>
-          <p><span className="font-semibold text-brand-primary">Secretary:</span> admin@example.com / Admin@123</p>
-          <p><span className="font-semibold text-brand-primary">Resident:</span> rahul@example.com / Password@123</p>
+          <p><span className="font-semibold text-brand-primary">Secretary:</span> admin@societycare.com / Admin@123</p>
+          <p><span className="font-semibold text-brand-primary">Resident:</span> vedantvyas@gmail.com / Vedant123</p>
         </div>
 
         {/* Redirect Link */}

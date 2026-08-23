@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Link, useNavigate } from 'react-router-dom';
@@ -6,7 +6,21 @@ import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { registerSchema } from '../validations/schemas';
 import AuthLayout from '../layouts/AuthLayout';
-import { User, Mail, Phone, Home, KeyRound, Loader2, Eye, EyeOff, Calendar, ChevronDown } from 'lucide-react';
+import {
+  User,
+  Mail,
+  Phone,
+  Home,
+  KeyRound,
+  Loader2,
+  Eye,
+  EyeOff,
+  Calendar,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+} from 'lucide-react';
+import DatePicker from '../components/DatePicker';
 import api from '../services/api';
 
 const Register = () => {
@@ -92,7 +106,11 @@ const Register = () => {
 
   return (
     <AuthLayout title="Create an account" subtitle="Join SocietyCare to track maintenance requests">
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+      <form
+        onSubmit={handleSubmit(onSubmit)}
+        autoComplete="off"
+        className="space-y-5"
+      >
         {/* Full Name */}
         <div>
           <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">
@@ -128,6 +146,7 @@ const Register = () => {
             </div>
             <input
               type="email"
+              autoComplete="off"
               placeholder="Enter your email address"
               {...register('email')}
               className={`block w-full pl-10 pr-4 py-2.5 bg-brand-ivory/50 border ${errors.email ? 'border-brand-danger focus:ring-brand-danger/20' : 'border-brand-gray focus:ring-brand-primary/20'
@@ -220,18 +239,12 @@ const Register = () => {
               Date of Birth
               {dobAge !== null && <span className="ml-2 normal-case text-brand-primary font-extrabold">→ Age {dobAge}</span>}
             </label>
-            <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
-                <Calendar className="w-4 h-4" />
-              </div>
-              <input
-                type="date"
-                value={dateOfBirth}
-                onChange={(e) => setDateOfBirth(e.target.value)}
-                max={new Date().toISOString().split('T')[0]}
-                className="block w-full pl-9 pr-4 py-2.5 bg-brand-ivory/50 border border-brand-gray rounded-2xl text-sm text-brand-charcoal focus:border-brand-primary focus:ring-4 focus:ring-brand-primary/20 focus:outline-none transition-all"
-              />
-            </div>
+            <DatePicker
+              value={dateOfBirth}
+              onChange={setDateOfBirth}
+              max={new Date().toISOString().split('T')[0]}
+              placeholder="DD-MM-YYYY"
+            />
           </div>
         </div>
 
@@ -250,6 +263,7 @@ const Register = () => {
             {/* Password Input */}
             <input
               type={showPassword ? 'text' : 'password'}
+              autoComplete="new-password"
               placeholder="Enter your password"
               {...register('password')}
               className={`block w-full pl-10 pr-12 py-2.5 bg-brand-ivory/50 border ${errors.password
@@ -295,11 +309,12 @@ const Register = () => {
             {/* Confirm Password Input */}
             <input
               type={showConfirmPassword ? 'text' : 'password'}
+              autoComplete="new-password"
               placeholder="Confirm your password"
               {...register('confirmPassword')}
               className={`block w-full pl-10 pr-12 py-2.5 bg-brand-ivory/50 border ${errors.confirmPassword
-                  ? 'border-brand-danger focus:ring-brand-danger/20'
-                  : 'border-brand-gray focus:ring-brand-primary/20'
+                ? 'border-brand-danger focus:ring-brand-danger/20'
+                : 'border-brand-gray focus:ring-brand-primary/20'
                 } rounded-2xl text-sm text-brand-charcoal focus:border-brand-primary focus:ring-4 focus:outline-none transition-all`}
             />
 

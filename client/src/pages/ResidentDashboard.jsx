@@ -446,7 +446,7 @@ const ResidentDashboard = () => {
               />
             ) : (
               <div className="space-y-4">
-                {complaints.slice(0, 3).map((complaint) => (
+                {complaints.slice(0, 4).map((complaint) => (
                   <div
                     key={complaint.id}
                     onClick={() => navigate(`/complaints/${complaint.id}`)}

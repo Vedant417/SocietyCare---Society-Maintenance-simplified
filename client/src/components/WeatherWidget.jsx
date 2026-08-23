@@ -2,20 +2,20 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import api from '../services/api';
-import { 
-  Sun, 
-  CloudSun, 
-  CloudRain, 
-  CloudLightning, 
-  Cloud, 
-  Wind, 
-  Droplets, 
-  Navigation, 
-  Search, 
-  RefreshCw, 
-  MapPin, 
-  Loader2, 
-  X 
+import {
+  Sun,
+  CloudSun,
+  CloudRain,
+  CloudLightning,
+  Cloud,
+  Wind,
+  Droplets,
+  Navigation,
+  Search,
+  RefreshCw,
+  MapPin,
+  Loader2,
+  X
 } from 'lucide-react';
 
 const DEFAULT_LAT = 12.9716;
@@ -38,6 +38,7 @@ const WeatherWidget = () => {
   const [searching, setSearching] = useState(false);
 
   const searchRef = useRef(null);
+  const searchToggleRef = useRef(null);
 
   // Resolve coordinate preferences
   const lat = user?.weatherLatitude ?? DEFAULT_LAT;
@@ -47,12 +48,22 @@ const WeatherWidget = () => {
   // Handle clicking outside search dropdown to close it
   useEffect(() => {
     const handleClickOutside = (event) => {
-      if (searchRef.current && !searchRef.current.contains(event.target)) {
+      const clickedInsideSearch =
+        searchRef.current?.contains(event.target);
+
+      const clickedSearchToggle =
+        searchToggleRef.current?.contains(event.target);
+
+      if (!clickedInsideSearch && !clickedSearchToggle) {
         setShowSearch(false);
       }
     };
+
     document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
   }, []);
 
   const fetchWeather = async (latitude = lat, longitude = lon, name = locationName, isSilent = false) => {
@@ -107,7 +118,7 @@ const WeatherWidget = () => {
       async (position) => {
         const newLat = position.coords.latitude;
         const newLon = position.coords.longitude;
-        
+
         try {
           // Let backend geocode the location to get a readable name
           const response = await api.get('/weather', {
@@ -147,7 +158,7 @@ const WeatherWidget = () => {
   const handleSearchChange = async (e) => {
     const value = e.target.value;
     setSearchQuery(value);
-    
+
     if (value.trim().length < 2) {
       setSearchResults([]);
       return;
@@ -255,7 +266,7 @@ const WeatherWidget = () => {
 
   return (
     <div className="bg-brand-card border border-brand-gray/40 rounded-3xl p-5 shadow-sm space-y-4 select-none relative transition-all duration-300 hover:shadow-md hover:-translate-y-0.5 hover:scale-[1.01]">
-      
+
       {/* Upper header block: Location and Controls */}
       <div className="flex justify-between items-start gap-4">
         <div className="flex items-start gap-1.5 min-w-0">
@@ -279,13 +290,13 @@ const WeatherWidget = () => {
           >
             <Navigation className="w-3.5 h-3.5" />
           </button>
-          
+
           {/* Location Search Toggle */}
           <button
-            onClick={() => setShowSearch(!showSearch)}
-            className={`p-1.5 rounded-xl transition-colors cursor-pointer ${
-              showSearch ? 'bg-[#EEEAFE] text-[#635BFF]' : 'text-gray-400 hover:bg-[#EEEAFE] hover:text-[#635BFF]'
-            }`}
+            ref={searchToggleRef}
+            onClick={() => setShowSearch((prev) => !prev)}
+            className={`p-1.5 rounded-xl transition-colors cursor-pointer ${showSearch ? 'bg-[#EEEAFE] text-[#635BFF]' : 'text-gray-400 hover:bg-[#EEEAFE] hover:text-[#635BFF]'
+              }`}
             title="Search Location"
           >
             <Search className="w-3.5 h-3.5" />

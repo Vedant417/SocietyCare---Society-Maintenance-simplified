@@ -153,7 +153,7 @@ const AdminNotices = () => {
             icon={<Megaphone className="w-8 h-8" />}
             title="Notice Board is empty"
             description="You haven't posted any notices yet. Create your first notice to broadcast it to residents."
-            actionText="Post First Notice"
+            
             onActionClick={() => navigate('/admin/notices/new')}
           />
         ) : (

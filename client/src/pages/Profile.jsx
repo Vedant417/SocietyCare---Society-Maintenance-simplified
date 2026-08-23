@@ -4,6 +4,7 @@ import { useToast } from "../context/ToastContext";
 import DashboardLayout from "../layouts/DashboardLayout";
 import api, { getPhotoUrl } from "../services/api";
 import { PRELOADED_AVATARS } from "../assets/avatarsList";
+import DatePicker from "../components/DatePicker";
 import {
   User, Mail, Phone, Home, Calendar, ShieldAlert,
   Pencil, Save, X, Loader2, Users, PlusCircle, Trash2, ChevronDown, Heart,
@@ -513,7 +514,7 @@ const Profile = () => {
             </div>
 
             {/* Scrollable Form Body */}
-            <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain">
+            <div className="flex-1 min-h-0 overflow-visible">
               <form
                 onSubmit={handleAddMember}
                 className="p-6 space-y-4"
@@ -611,18 +612,16 @@ const Profile = () => {
                   <label className={labelClass}>
                     Date of Birth
                   </label>
-
-                  <input
-                    type="date"
+                  <DatePicker
                     value={memberForm.dateOfBirth}
-                    onChange={(e) =>
+                    onChange={(dateVal) =>
                       setMemberForm((f) => ({
                         ...f,
-                        dateOfBirth: e.target.value,
+                        dateOfBirth: dateVal,
                       }))
                     }
                     max={new Date().toISOString().split("T")[0]}
-                    className={inputClass}
+                    placeholder="DD-MM-YYYY"
                   />
                 </div>
 
