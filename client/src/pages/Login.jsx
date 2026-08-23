@@ -167,6 +167,7 @@ const Login = () => {
           <p className="font-bold text-brand-charcoal mb-1">Development Demo Credentials:</p>
           <p><span className="font-semibold text-brand-primary">Secretary:</span> admin@societycare.com / Admin@123</p>
           <p><span className="font-semibold text-brand-primary">Resident:</span> vedantvyas@gmail.com / Vedant123</p>
+          <p><span className="font-semibold text-brand-primary">Resident 2:</span> anujtalwar@gmail.com / Anuj123</p>
         </div>
 
         {/* Redirect Link */}

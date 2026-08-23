@@ -3,14 +3,22 @@ import api from '../services/api';
 import DashboardLayout from '../layouts/DashboardLayout';
 import EmptyState from '../components/EmptyState';
 import { TableSkeleton } from '../components/SkeletonLoader';
-import { Users, Search, Mail, Phone, Home, Calendar, RotateCw } from 'lucide-react';
+import { Users, Search, Mail, Phone, Home, Calendar, RotateCw, X, Loader2, ChevronDown } from 'lucide-react';
 import Pagination from '../components/Pagination';
+import { useToast } from '../context/ToastContext';
 
 const AdminResidents = () => {
+  const { showToast } = useToast();
   const [residents, setResidents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Edit house number states
+  const [showEditHouseModal, setShowEditHouseModal] = useState(false);
+  const [selectedResidentId, setSelectedResidentId] = useState('');
+  const [newHouseNumber, setNewHouseNumber] = useState('');
+  const [updatingHouse, setUpdatingHouse] = useState(false);
 
   // Pagination states
   const [currentPage, setCurrentPage] = useState(1);
@@ -45,6 +53,58 @@ const AdminResidents = () => {
     setRefreshing(false);
   };
 
+  // Prefill the new house number when selecting a resident
+  useEffect(() => {
+    if (selectedResidentId) {
+      const resident = residents.find(r => r.id === selectedResidentId);
+      if (resident) {
+        setNewHouseNumber(resident.apartmentNumber || '');
+      }
+    } else {
+      setNewHouseNumber('');
+    }
+  }, [selectedResidentId, residents]);
+
+  const handleUpdateHouseNumber = async (e) => {
+    e.preventDefault();
+    if (!selectedResidentId) {
+      showToast("Please select a resident.", "warning");
+      return;
+    }
+    if (!newHouseNumber.trim()) {
+      showToast("Please enter a new house number.", "warning");
+      return;
+    }
+
+    setUpdatingHouse(true);
+    try {
+      const response = await api.patch(`/admin/residents/${selectedResidentId}/apartment`, {
+        apartmentNumber: newHouseNumber
+      });
+
+      if (response.data.success) {
+        showToast("House number updated successfully!", "success");
+        // Update local state immediately
+        setResidents((prev) =>
+          prev.map((r) =>
+            r.id === selectedResidentId
+              ? { ...r, apartmentNumber: response.data.data.apartmentNumber }
+              : r
+          )
+        );
+        setShowEditHouseModal(false);
+        setSelectedResidentId('');
+        setNewHouseNumber('');
+      }
+    } catch (error) {
+      console.error("Error updating house number:", error);
+      const errMsg = error.response?.data?.message || "Failed to update house number.";
+      showToast(errMsg, "error");
+    } finally {
+      setUpdatingHouse(false);
+    }
+  };
+
   // Filter residents
   const filteredResidents = residents.filter((r) => {
     const query = searchQuery.toLowerCase();
@@ -73,7 +133,7 @@ const AdminResidents = () => {
 
           <div className="flex items-center gap-3 w-full sm:w-auto shrink-0">
             {/* Search bar */}
-            <div className="relative max-w-sm w-full">
+            <div className="relative w-64 sm:w-80 md:w-96">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
                 <Search className="w-4 h-4" />
               </div>
@@ -85,6 +145,16 @@ const AdminResidents = () => {
                 className="block w-full pl-9 pr-4 py-2.5 bg-brand-card border border-brand-gray rounded-2xl text-xs text-brand-charcoal focus:border-brand-primary focus:ring-4 focus:ring-brand-primary/10 focus:outline-none transition-all"
               />
             </div>
+
+            {/* Edit House No. Button */}
+            <button
+              onClick={() => setShowEditHouseModal(true)}
+              className="flex items-center justify-center gap-2 px-4 py-2.5 bg-brand-primary hover:bg-[#635BFF]/95 text-white font-bold text-xs rounded-2xl shadow-sm transition-all active:scale-95 cursor-pointer select-none shrink-0"
+              title="Edit House Number"
+            >
+              <Home className="w-4 h-4" />
+              <span>Edit House No.</span>
+            </button>
 
             <button
               onClick={handleRefresh}
@@ -255,6 +325,103 @@ const AdminResidents = () => {
         )}
 
       </div>
+
+      {/* Edit House Number Modal */}
+      {showEditHouseModal && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center overflow-hidden px-4">
+          {/* Backdrop */}
+          <div
+            className="fixed inset-0 bg-brand-charcoal/50 backdrop-blur-sm"
+            onClick={() => setShowEditHouseModal(false)}
+          />
+
+          {/* Modal Card */}
+          <div className="relative bg-white border border-brand-gray/40 rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl animate-fade-in space-y-6 z-10 max-h-[calc(100vh-2rem)] overflow-y-auto">
+            <div className="flex justify-between items-center pb-4 border-b border-brand-gray/30">
+              <h3 className="text-base font-extrabold text-brand-charcoal">
+                Edit House Number
+              </h3>
+              <button
+                type="button"
+                onClick={() => setShowEditHouseModal(false)}
+                className="p-1.5 hover:bg-brand-gray-light text-gray-400 hover:text-brand-charcoal rounded-xl transition-all cursor-pointer bg-transparent border-0"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleUpdateHouseNumber} className="space-y-4">
+              {/* Select Resident */}
+              <div>
+                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">
+                  Select Resident
+                </label>
+                <div className="relative">
+                  <select
+                    value={selectedResidentId}
+                    onChange={(e) => setSelectedResidentId(e.target.value)}
+                    required
+                    className="block w-full px-4 py-2.5 bg-brand-ivory/50 border border-brand-gray rounded-2xl text-sm text-brand-charcoal focus:border-brand-primary focus:ring-4 focus:ring-brand-primary/20 focus:outline-none transition-all appearance-none cursor-pointer"
+                  >
+                    <option value="">Choose resident...</option>
+                    {residents.map((r) => (
+                      <option key={r.id} value={r.id}>
+                        {r.name} ({r.apartmentNumber})
+                      </option>
+                    ))}
+                  </select>
+                  <div className="pointer-events-none absolute inset-y-0 right-3 flex items-center">
+                    <ChevronDown className="w-4 h-4 text-gray-400" />
+                  </div>
+                </div>
+              </div>
+
+              {/* New Apartment/Flat Number */}
+              <div>
+                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">
+                  New House / Flat Number
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
+                    <Home className="w-4 h-4" />
+                  </div>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. Flat A-501"
+                    value={newHouseNumber}
+                    onChange={(e) => setNewHouseNumber(e.target.value)}
+                    className="block w-full pl-9 pr-4 py-2.5 bg-brand-ivory/50 border border-brand-gray rounded-2xl text-sm text-brand-charcoal focus:border-brand-primary focus:ring-4 focus:ring-brand-primary/10 focus:outline-none transition-all"
+                  />
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex gap-3 pt-4 border-t border-brand-gray/25">
+                <button
+                  type="submit"
+                  disabled={updatingHouse}
+                  className="flex-1 flex items-center justify-center gap-2 py-3 px-4 bg-brand-primary hover:bg-[#635BFF]/95 text-white font-bold text-sm rounded-2xl shadow-md transition-all cursor-pointer disabled:opacity-60 select-none"
+                >
+                  {updatingHouse ? (
+                    <Loader2 className="w-4 h-4 animate-spin text-white" />
+                  ) : (
+                    'Save Changes'
+                  )}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowEditHouseModal(false)}
+                  disabled={updatingHouse}
+                  className="px-6 py-3 border border-brand-gray bg-white text-gray-500 hover:text-brand-primary hover:bg-brand-gray-light font-bold text-sm rounded-2xl transition-all cursor-pointer select-none"
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </DashboardLayout>
   );
 };

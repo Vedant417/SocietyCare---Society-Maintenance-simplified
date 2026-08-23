@@ -1,4 +1,4 @@
-﻿const User = require("../models/User");
+const User = require("../models/User");
 const Complaint = require("../models/Complaint");
 const FamilyMember = require("../models/FamilyMember");
 
@@ -43,4 +43,35 @@ async function getResidents(req, res, next) {
   }
 }
 
-module.exports = { getResidents };
+async function updateResidentApartment(req, res, next) {
+  try {
+    const { id } = req.params;
+    const { apartmentNumber } = req.body;
+
+    if (!apartmentNumber || typeof apartmentNumber !== 'string' || !apartmentNumber.trim()) {
+      return res.status(400).json({ success: false, message: "Apartment/Flat number is required." });
+    }
+
+    const user = await User.findOne({ _id: id, role: "RESIDENT" });
+    if (!user) {
+      return res.status(404).json({ success: false, message: "Resident not found." });
+    }
+
+    user.apartmentNumber = apartmentNumber.trim();
+    await user.save();
+
+    return res.status(200).json({
+      success: true,
+      message: "Apartment number updated successfully.",
+      data: {
+        id: user._id.toString(),
+        name: user.name,
+        apartmentNumber: user.apartmentNumber
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+module.exports = { getResidents, updateResidentApartment };

@@ -14,7 +14,7 @@ const SHORT_MONTHS = [
 
 const WEEKDAYS = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
 
-const DatePicker = ({ value, onChange, max, className = '', placeholder = 'DD-MM-YYYY' }) => {
+const DatePicker = ({ value, onChange, max, className = '', placeholder = 'DD-MM-YYYY', highlightToday = false }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState(null); // Date object or null
 
@@ -117,6 +117,15 @@ const DatePicker = ({ value, onChange, max, className = '', placeholder = 'DD-MM
       return monthIndex > maxDateLimit.getMonth();
     }
     return false;
+  };
+
+  // Helper to check if a date is today's date
+  const isToday = (date) => {
+    if (!date) return false;
+    const t = new Date();
+    return date.getDate() === t.getDate() &&
+           date.getMonth() === t.getMonth() &&
+           date.getFullYear() === t.getFullYear();
   };
 
   // Grid builder for days
@@ -373,6 +382,7 @@ const DatePicker = ({ value, onChange, max, className = '', placeholder = 'DD-MM
 
                   const disabled = isDateDisabled(date);
                   const selected = isDateSelected(date);
+                  const today = isToday(date);
 
                   return (
                     <button
@@ -380,18 +390,20 @@ const DatePicker = ({ value, onChange, max, className = '', placeholder = 'DD-MM
                       type="button"
                       disabled={disabled}
                       onClick={() => handleDayClick(date)}
-                      className={`relative w-7 h-7 flex flex-col items-center justify-center rounded-lg text-[11px] font-bold transition-all cursor-pointer border-0 bg-transparent
+                      className={`relative w-7 h-7 flex flex-col items-center justify-center rounded-lg text-[11px] font-extrabold transition-all cursor-pointer border
                         ${disabled 
-                          ? 'text-gray-300 cursor-not-allowed' 
+                          ? 'text-gray-300 cursor-not-allowed border-transparent bg-transparent' 
                           : selected
-                            ? 'bg-[#635BFF] text-white shadow shadow-brand-primary/30'
-                            : 'text-brand-charcoal hover:bg-brand-primary/10 hover:text-brand-primary'
+                            ? 'bg-white border-[#635BFF] text-[#635BFF] shadow shadow-brand-primary/20'
+                            : (highlightToday && today)
+                              ? 'border-[#635BFF]/40 text-[#635BFF] bg-transparent font-extrabold'
+                              : 'text-brand-charcoal hover:bg-brand-primary/10 hover:text-brand-primary border-transparent bg-transparent'
                         }
                       `}
                     >
                       {date.getDate()}
                       {selected && (
-                        <span className="absolute bottom-0.5 w-0.5 h-0.5 rounded-full bg-white" />
+                        <span className="absolute bottom-0.5 w-0.5 h-0.5 rounded-full bg-[#635BFF]" />
                       )}
                     </button>
                   );

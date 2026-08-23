@@ -359,7 +359,12 @@ const Profile = () => {
                       <span className="ml-2 normal-case font-extrabold text-brand-primary">(Age {editAge})</span>
                     )}
                   </label>
-                  <input type="date" value={editDob} onChange={(e) => setEditDob(e.target.value)} max={new Date().toISOString().split("T")[0]} className={inputClass} />
+                  <DatePicker
+                    value={editDob}
+                    onChange={setEditDob}
+                    max={new Date().toISOString().split("T")[0]}
+                    placeholder="Select date of birth"
+                  />
                 </div>
               </div>
               <div className="flex gap-3 pt-4 border-t border-brand-gray/25">
@@ -622,6 +627,7 @@ const Profile = () => {
                     }
                     max={new Date().toISOString().split("T")[0]}
                     placeholder="DD-MM-YYYY"
+                    highlightToday
                   />
                 </div>
 

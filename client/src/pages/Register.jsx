@@ -244,6 +244,7 @@ const Register = () => {
               onChange={setDateOfBirth}
               max={new Date().toISOString().split('T')[0]}
               placeholder="DD-MM-YYYY"
+              highlightToday
             />
           </div>
         </div>
